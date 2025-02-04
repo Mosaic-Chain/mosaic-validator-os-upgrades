@@ -1,0 +1,9 @@
+- name: Initializing Mosaic Validator OS Upgrades
+  ansible.builtin.debug:
+    msg: "Initalized."
+
+- name: Create version counter
+  ansible.builtin.copy:
+    dest: "/opt/mosaic/mosaic-stack.version"
+    content: "0.0.1"
+    mode: '0644'

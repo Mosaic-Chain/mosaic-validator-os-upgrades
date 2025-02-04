@@ -1,0 +1,6 @@
+- name: Upgrade Mosaic Validator OS
+  hosts: localhost
+
+  tasks:
+    - name: Initial
+      ansible.builtin.include_tasks: ../tasks/upgrade_0.0.1.yml
