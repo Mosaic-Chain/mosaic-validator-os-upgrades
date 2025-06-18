@@ -7,7 +7,7 @@
 
 - name: Skip if tailscale is not installed
   ansible.builtin.meta: end_play
-  when: "'tailscale' in ansible_facts.packages"
+  when: "'tailscale' not in ansible_facts.packages"
 
 - name: Gather service facts
   ansible.builtin.service_facts:
