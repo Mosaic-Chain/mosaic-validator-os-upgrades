@@ -86,31 +86,31 @@
 
 - name: Copy nebula service
   ansible.builtin.template:
-    src: "./artifacts/nebula.service.j2"
+    src: nebula.service.j2
     dest: /etc/systemd/system/nebula.service
     mode: "0644"
 
 - name: Copy Nebula Sync systemd service file
   ansible.builtin.template:
-    src: "./artifacts/mosaic-nebula-sync.service"
+    src: mosaic-nebula-sync.service.j2
     dest: /etc/systemd/system/mosaic-nebula-sync.service
     mode: "0644"
 
 - name: Copy Nebula Sync systemd timer file
   ansible.builtin.template:
-    src: "./artifacts/mosaic-nebula-sync.timer.j2"
+    src: mosaic-nebula-sync.timer.j2
     dest: /etc/systemd/system/mosaic-nebula-sync.timer
     mode: "0644"
 
 - name: Copy announcer testnet systemd file
   ansible.builtin.template:
-    src: "./artifacts/mosaic-announcer-testnet.service.j2"
+    src: mosaic-announcer-testnet.service.j2
     dest: /etc/systemd/system/mosaic-announcer-testnet.service
     mode: "0644"
 
 - name: Copy announcer devnet systemd file
   ansible.builtin.template:
-    src: "./artifacts/mosaic-announcer-devnet.service.j2"
+    src: mosaic-announcer-devnet.service.j2
     dest: /etc/systemd/system/mosaic-announcer-devnet.service
     mode: "0644"
 
