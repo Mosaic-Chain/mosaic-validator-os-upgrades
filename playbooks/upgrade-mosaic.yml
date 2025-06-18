@@ -1,6 +1,19 @@
-- name: Upgrade Mosaic Validator OS
+- name: Initial
   hosts: localhost
 
   tasks:
     - name: Initial
-      ansible.builtin.include_tasks: ../tasks/upgrade_0.0.1.yml
+      ansible.builtin.include_tasks: ../tasks/0.0.1/playbook.yaml
+      vars:
+        migration_version: 0.0.1
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Migrate to Nebula
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to Nebula
+      ansible.builtin.include_tasks: ../tasks/0.0.2/playbook.yaml
+      vars:
+        migration_version: 0.0.2
+        version_file: /opt/mosaic/mosaic-stack.version
