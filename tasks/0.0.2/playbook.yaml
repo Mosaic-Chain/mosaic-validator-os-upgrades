@@ -53,6 +53,8 @@
 - name: Run Nebula migration script
   ansible.builtin.command: mosaic-nebula migrate
   changed_when: true
+  args:
+    creates: /etc/nebula/host.crt
 
 - name: Get Nebula IP
   ansible.builtin.shell: |
@@ -82,21 +84,51 @@
   ansible.builtin.set_fact:
     validator_name: "{{ nebula_name_result.stdout }}"
 
+- name: Copy nebula service
+  ansible.builtin.template:
+    src: "./artifacts/nebula.service.j2"
+    dest: /etc/systemd/system/nebula.service
+    mode: "0644"
+
+- name: Copy Nebula Sync systemd service file
+  ansible.builtin.template:
+    src: "./artifacts/mosaic-nebula-sync.service"
+    dest: /etc/systemd/system/mosaic-nebula-sync.service
+    mode: "0644"
+
+- name: Copy Nebula Sync systemd timer file
+  ansible.builtin.template:
+    src: "./artifacts/mosaic-nebula-sync.timer.j2"
+    dest: /etc/systemd/system/mosaic-nebula-sync.timer
+    mode: "0644"
+
 - name: Copy announcer testnet systemd file
   ansible.builtin.template:
-    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-announcer-testnet.service.j2"
+    src: "./artifacts/mosaic-announcer-testnet.service.j2"
     dest: /etc/systemd/system/mosaic-announcer-testnet.service
     mode: "0644"
 
 - name: Copy announcer devnet systemd file
   ansible.builtin.template:
-    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-announcer-devnet.service.j2"
+    src: "./artifacts/mosaic-announcer-devnet.service.j2"
     dest: /etc/systemd/system/mosaic-announcer-devnet.service
     mode: "0644"
 
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
+
+- name: Enable and start Nebula service
+  ansible.builtin.systemd:
+    name: nebula.service
+    enabled: true
+    state: started
+
+- name: Enable and start Mosaic Nebula Sync timer
+  ansible.builtin.systemd:
+    name: mosaic-nebula-sync.timer
+    enabled: true
+    state: started
 
 - name: Enable and start announcer service
   ansible.builtin.systemd:
