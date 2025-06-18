@@ -28,4 +28,4 @@ publish-github:
     - cp ./scripts/hide-git-committer-identity.sh ~/hide-git-committer-identity.sh
     - git rebase -r --root --committer-date-is-author-date --exec "bash ~/hide-git-committer-identity.sh"
     - git remote set-url origin $GITHUB_DEPLOY_URL
-    - git push --force origin HEAD:$CI_COMMIT_REF_NAME
+    - git push --force origin HEAD:refs/heads/$CI_COMMIT_REF_NAME
