@@ -20,7 +20,7 @@
   ansible.builtin.cron:
     name: "Update Mosaic script"
     minute: "0"
-    hour: "{{ (upgrade_hour + 1) % 24 }}"
+    hour: "{{ (upgrade_hour | int + 1) % 24 }}"
     day: "*"
     month: "*"
     weekday: "*"
