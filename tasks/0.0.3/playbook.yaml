@@ -1,0 +1,33 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Generate a random upgrade day
+  ansible.builtin.set_fact:
+    upgrade_hour: "{{ 24 | random }}"
+
+- name: Run `unattended-upgrade` daily
+  ansible.builtin.cron:
+    name: "Unattended upgrades"
+    minute: "0"
+    hour: "{{ upgrade_hour }}"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "/usr/bin/unattended-upgrade -d"
+
+- name: Run `update-mosaic` script daily
+  ansible.builtin.cron:
+    name: "Update Mosaic script"
+    minute: "0"
+    hour: "{{ (upgrade_hour | int + 1) % 24 }}"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "/bin/bash /opt/mosaic/update-mosaic.sh >> /opt/mosaic/update-mosaic.log 2>&1"
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
