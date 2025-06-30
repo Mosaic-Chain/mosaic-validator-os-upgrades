@@ -37,3 +37,21 @@
       vars:
         migration_version: 0.0.4
         version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Update every package to latest
+  hosts: localhost
+
+  tasks:
+    - name: Update every package to latest
+      ansible.builtin.apt:
+        name:
+          - mosaic-testnet-solo
+          - mosaic-chain-devnet
+          - mosaic-pro-indexer
+          - mosaic-pro-indexer-rc
+          - mosaic-announcer
+          - mosaic-announcer-rc
+          - mosaic-admin-backend
+          - mosaic-admin-backend-rc
+          - mosaic-nebula
+        state: latest
