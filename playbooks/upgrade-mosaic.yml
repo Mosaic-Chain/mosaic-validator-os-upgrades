@@ -1,0 +1,39 @@
+- name: Initial
+  hosts: localhost
+
+  tasks:
+    - name: Initial
+      ansible.builtin.include_tasks: ../tasks/0.0.1/playbook.yaml
+      vars:
+        migration_version: 0.0.1
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Migrate to Nebula
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to Nebula
+      ansible.builtin.include_tasks: ../tasks/0.0.2/playbook.yaml
+      vars:
+        migration_version: 0.0.2
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Make validator nodes update daily (not monthly)
+  hosts: localhost
+
+  tasks:
+    - name: Make validator nodes update daily
+      ansible.builtin.include_tasks: ../tasks/0.0.3/playbook.yaml
+      vars:
+        migration_version: 0.0.3
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Disable port scanning on local networks (excluding Nebula)
+  hosts: localhost
+
+  tasks:
+    - name: Disable port scanning on local networks (excluding Nebula)
+      ansible.builtin.include_tasks: ../tasks/0.0.4/playbook.yaml
+      vars:
+        migration_version: 0.0.4
+        version_file: /opt/mosaic/mosaic-stack.version

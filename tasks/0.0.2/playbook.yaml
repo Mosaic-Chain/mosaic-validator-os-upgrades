@@ -1,0 +1,157 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Gather installed package facts
+  ansible.builtin.package_facts:
+
+- name: Skip if tailscale is not installed
+  ansible.builtin.meta: end_play
+  when: "'tailscale' not in ansible_facts.packages"
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Add dlabs staging repository
+  ansible.builtin.copy:
+    content: "deb http://europe-apt.pkg.dev/projects/mosaicchan-devnet apt-staging-repository main\n"
+    dest: /etc/apt/sources.list.d/mosaic-staging.list
+    owner: root
+    group: root
+    mode: "0644"
+  when: network == 'testnet'
+
+- name: Install latest packages
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - nebula
+      - mosaic-nebula
+      - mosaic-testnet-solo
+      - mosaic-chain-devnet
+      - mosaic-pro-indexer
+      - mosaic-pro-indexer-rc
+      - mosaic-announcer
+      - mosaic-announcer-rc
+      - mosaic-admin-backend
+      - mosaic-admin-backend-rc
+      - mosaic-nebula
+    state: latest
+
+- name: Create Nebula directory
+  ansible.builtin.file:
+    name: /etc/nebula
+    state: directory
+    mode: "0755"
+
+- name: Create Nebula keypair
+  ansible.builtin.command: nebula-cert keygen -out-key /etc/nebula/host.key -out-pub /etc/nebula/host.pub
+  changed_when: true
+  args:
+    creates: /etc/nebula/host.key
+
+- name: Run Nebula migration script
+  ansible.builtin.command: mosaic-nebula migrate
+  changed_when: true
+  args:
+    creates: /etc/nebula/host.crt
+
+- name: Get Nebula IP
+  ansible.builtin.shell: |
+    set -o pipefail
+    nebula-cert print -json -path /etc/nebula/host.crt | jq -r '.details.ips[0]'
+  register: nebula_ip_result
+  changed_when: false
+  failed_when: nebula_ip_result.rc != 0
+  args:
+    executable: /bin/bash
+
+- name: Set Nebula IP as a fact
+  ansible.builtin.set_fact:
+    nebula_ip: "{{ nebula_ip_result.stdout | split('/') | first }}"
+
+- name: Get Nebula name
+  ansible.builtin.shell: |
+    set -o pipefail
+    nebula-cert print -json -path /etc/nebula/host.crt | jq -r '.details.name'
+  register: nebula_name_result
+  changed_when: false
+  failed_when: nebula_name_result.rc != 0
+  args:
+    executable: /bin/bash
+
+- name: Set Nebula name as a fact
+  ansible.builtin.set_fact:
+    validator_name: "{{ nebula_name_result.stdout }}"
+
+- name: Copy nebula service
+  ansible.builtin.template:
+    src: nebula.service.j2
+    dest: /etc/systemd/system/nebula.service
+    mode: "0644"
+
+- name: Copy Nebula Sync systemd service file
+  ansible.builtin.template:
+    src: mosaic-nebula-sync.service.j2
+    dest: /etc/systemd/system/mosaic-nebula-sync.service
+    mode: "0644"
+
+- name: Copy Nebula Sync systemd timer file
+  ansible.builtin.template:
+    src: mosaic-nebula-sync.timer.j2
+    dest: /etc/systemd/system/mosaic-nebula-sync.timer
+    mode: "0644"
+
+- name: Copy announcer testnet systemd file
+  ansible.builtin.template:
+    src: mosaic-announcer-testnet.service.j2
+    dest: /etc/systemd/system/mosaic-announcer-testnet.service
+    mode: "0644"
+
+- name: Copy announcer devnet systemd file
+  ansible.builtin.template:
+    src: mosaic-announcer-devnet.service.j2
+    dest: /etc/systemd/system/mosaic-announcer-devnet.service
+    mode: "0644"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start Nebula service
+  ansible.builtin.systemd:
+    name: nebula.service
+    enabled: true
+    state: started
+
+- name: Enable and start Mosaic Nebula Sync timer
+  ansible.builtin.systemd:
+    name: mosaic-nebula-sync.timer
+    enabled: true
+    state: started
+
+- name: Enable and start announcer service
+  ansible.builtin.systemd:
+    name: mosaic-announcer-{{ network }}.service
+    enabled: true
+    state: restarted
+
+- name: Remove tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: absent
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
