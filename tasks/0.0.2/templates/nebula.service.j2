@@ -1,0 +1,14 @@
+[Unit]
+Description=Nebula
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=nebula -config /etc/nebula/config.yml
+Restart=always
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
