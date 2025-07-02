@@ -30,13 +30,22 @@
     mode: "0644"
   when: network == 'testnet'
 
-- name: Install nebula
+- name: Install latest packages
   ansible.builtin.apt:
     update_cache: true
     name:
       - nebula
       - mosaic-nebula
-    state: present
+      - mosaic-testnet-solo
+      - mosaic-chain-devnet
+      - mosaic-pro-indexer
+      - mosaic-pro-indexer-rc
+      - mosaic-announcer
+      - mosaic-announcer-rc
+      - mosaic-admin-backend
+      - mosaic-admin-backend-rc
+      - mosaic-nebula
+    state: latest
 
 - name: Create Nebula directory
   ansible.builtin.file:
