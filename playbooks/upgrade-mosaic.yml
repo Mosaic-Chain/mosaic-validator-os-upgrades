@@ -38,12 +38,16 @@
         migration_version: 0.0.4
         version_file: /opt/mosaic/mosaic-stack.version
 
+# 0.0.5 is missing because it was deployed before the required packages were published.
+# Therefore, the 0.0.6 version equals to the previous 0.0.5 version, but with a new
+# version number to manually retrigger it for nodes that already on the 0.0.5 version.
+
 - name: Update indexer to latest version
   hosts: localhost
 
   tasks:
     - name: Update indexer to latest version
-      ansible.builtin.include_tasks: ../tasks/0.0.5/playbook.yaml
+      ansible.builtin.include_tasks: ../tasks/0.0.6/playbook.yaml
       vars:
-        migration_version: 0.0.5
+        migration_version: 0.0.6
         version_file: /opt/mosaic/mosaic-stack.version
