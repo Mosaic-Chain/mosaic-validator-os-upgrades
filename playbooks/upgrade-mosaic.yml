@@ -37,3 +37,13 @@
       vars:
         migration_version: 0.0.4
         version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Update indexer to latest version
+  hosts: localhost
+
+  tasks:
+    - name: Update indexer to latest version
+      ansible.builtin.include_tasks: ../tasks/0.0.5/playbook.yaml
+      vars:
+        migration_version: 0.0.5
+        version_file: /opt/mosaic/mosaic-stack.version
