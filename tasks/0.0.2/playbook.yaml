@@ -144,6 +144,10 @@
     name: mosaic-announcer-{{ network }}.service
     enabled: true
     state: restarted
+  register: announcer_service_result
+  until: announcer_service_result is succeeded
+  retries: 10
+  delay: 10
 
 - name: Remove tailscale
   ansible.builtin.apt:
