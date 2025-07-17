@@ -1,0 +1,16 @@
+- name: Check if an upgrade is available for the package
+  ansible.builtin.cmd: apt list --upgradable
+  register: upgrade_check
+  changed_when: false
+  failed_when: false
+
+- name: Upgrade the specified package
+  ansible.builtin.apt:
+    name: "{{ package_name }}"
+    state: latest
+  when: "'{{ package_name }}' in upgrade_check.stdout"
+  register: package_upgrade
+
+- name: Check if the package was upgraded
+  ansible.builtin.set_fact:
+    "{{ upgrade_fact_name }}": "{{ package_upgrade.changed | default(false) }}"
