@@ -45,7 +45,7 @@
 
 - name: Restart chain testnet service if package was upgraded
   ansible.builtin.systemd:
-    name: mosaic-indexer-testnet
+    name: mosaic-chain-testnet
     state: restarted
   when: chain_testnet_upgraded
 
