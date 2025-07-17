@@ -1,5 +1,5 @@
 - name: Check if an upgrade is available for the package
-  ansible.builtin.cmd: apt list --upgradable
+  ansible.builtin.command: apt list --upgradable
   register: upgrade_check
   changed_when: false
   failed_when: false
