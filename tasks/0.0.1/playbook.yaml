@@ -8,8 +8,14 @@
     state: directory
     mode: "0777"
 
+- name: Check if the file exists
+  ansible.builtin.stat:
+    path: "{{ version_file }}"
+  register: version_file_stat
+
 - name: Create version counter
   ansible.builtin.copy:
     dest: "{{ version_file }}"
     content: "{{ migration_version }}"
     mode: "0644"
+  when: not version_file_stat.stat.exists
