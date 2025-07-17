@@ -2,6 +2,12 @@
   ansible.builtin.meta: end_play
   when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
 
+- name: Replace upgrade package script
+  ansible.builtin.copy:
+    src: files/upgrade-package.yml
+    dest: /opt/mosaic/ansible/tasks/upgrade-package.yml
+    mode: "0644"
+
 - name: Replace testnet upgrade script
   ansible.builtin.copy:
     src: files/upgrade-mosaic-testnet.yml
