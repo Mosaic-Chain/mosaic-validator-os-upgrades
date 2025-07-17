@@ -51,3 +51,13 @@
       vars:
         migration_version: 0.0.6
         version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Restart chain service after chainspec change
+  hosts: localhost
+
+  tasks:
+    - name: Restart chain service after chainspec change
+      ansible.builtin.include_tasks: ../tasks/0.0.7/playbook.yaml
+      vars:
+        migration_version: 0.0.7
+        version_file: /opt/mosaic/mosaic-stack.version
