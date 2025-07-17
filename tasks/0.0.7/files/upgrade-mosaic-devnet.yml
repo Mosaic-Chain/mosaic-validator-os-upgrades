@@ -1,0 +1,75 @@
+- name: Upgrade announcer devnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/upgrade-package.yml
+  vars:
+    package_name: mosaic-announcer
+    upgrade_fact_name: announcer_upgraded
+
+- name: Restart announcer devnet service if package was upgraded
+  ansible.builtin.systemd:
+    name: mosaic-announcer-devnet
+    state: restarted
+  when: announcer_upgraded
+
+- name: Upgrade Admin Backend devnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/upgrade-package.yml
+  vars:
+    package_name: mosaic-admin-backend
+    upgrade_fact_name: admin_backend_upgraded
+
+- name: Restart admin backend devnet service if package was upgraded
+  ansible.builtin.systemd:
+    name: mosaic-admin-backend-devnet
+    state: restarted
+  when: admin_backend_upgraded
+
+- name: Upgrade Chain devnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/upgrade-package.yml
+  vars:
+    package_name: mosaic-chain-devnet
+    upgrade_fact_name: chain_devnet_upgraded
+
+- name: Stop indexer devnet
+  ansible.builtin.systemd:
+    name: mosaic-indexer-devnet
+    state: stopped
+  when: chain_devnet_upgraded
+
+- name: Update devnet parachain chainspec
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/update-chainspec.yml
+  vars:
+    type: para
+    spec_format: devnet-spec-*.json
+    latest_file_name: para-latest.json
+    task_network: devnet
+  when: chain_devnet_upgraded
+
+- name: Update devnet relaychain chainspec
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/update-chainspec.yml
+  vars:
+    type: relay
+    spec_format: paseo-spec-*.json
+    latest_file_name: relay-latest.json
+    task_network: devnet
+  when: chain_devnet_upgraded
+
+- name: Restart chain devnet service if package was upgraded
+  ansible.builtin.systemd:
+    name: mosaic-indexer-devnet
+    state: restarted
+  when: chain_devnet_upgraded
+
+- name: Upgrade Indexer devnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/upgrade-package.yml
+  vars:
+    package_name: mosaic-pro-indexer
+    upgrade_fact_name: indexer_devnet_upgraded
+
+- name: Wait for chain devnet to be started up
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/wait-for-chain-rpc.yml
+  when: indexer_devnet_upgraded or chain_devnet_upgraded
+
+- name: Restart indexer devnet service if package was upgraded
+  ansible.builtin.systemd:
+    name: mosaic-indexer-devnet
+    state: restarted
+  when: indexer_devnet_upgraded or chain_devnet_upgraded
