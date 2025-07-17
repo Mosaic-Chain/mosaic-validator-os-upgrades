@@ -1,0 +1,21 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Replace testnet upgrade script
+  ansible.builtin.copy:
+    src: files/upgrade-mosaic-testnet.yml
+    dest: /opt/mosaic/ansible/tasks/upgrade-mosaic-testnet.yml
+    mode: "0644"
+
+- name: Replace devnet upgrade script
+  ansible.builtin.copy:
+    src: files/upgrade-mosaic-devnet.yml
+    dest: /opt/mosaic/ansible/tasks/upgrade-mosaic-devnet.yml
+    mode: "0644"
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
