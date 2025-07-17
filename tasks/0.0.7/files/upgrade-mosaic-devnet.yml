@@ -54,7 +54,7 @@
 
 - name: Restart chain devnet service if package was upgraded
   ansible.builtin.systemd:
-    name: mosaic-indexer-devnet
+    name: mosaic-chain-devnet
     state: restarted
   when: chain_devnet_upgraded
 
