@@ -1,3 +1,7 @@
+- name: Update APT package cache
+  ansible.builtin.apt:
+    update_cache: true
+
 - name: Check if an upgrade is available for the package
   ansible.builtin.command: apt list --upgradable
   register: upgrade_check
