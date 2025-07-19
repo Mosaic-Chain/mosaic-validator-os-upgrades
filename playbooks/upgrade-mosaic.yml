@@ -57,7 +57,7 @@
 
   tasks:
     - name: Restart chain service after chainspec change
-      ansible.builtin.include_tasks: ../tasks/0.0.7/playbook.yaml
+      ansible.builtin.include_tasks: ../tasks/0.0.8/playbook.yaml
       vars:
-        migration_version: 0.0.7
+        migration_version: 0.0.8
         version_file: /opt/mosaic/mosaic-stack.version
