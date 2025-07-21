@@ -52,12 +52,12 @@
         migration_version: 0.0.6
         version_file: /opt/mosaic/mosaic-stack.version
 
-- name: Restart chain service after chainspec change
+- name: Remove pull based chainspec sync
   hosts: localhost
 
   tasks:
-    - name: Restart chain service after chainspec change
-      ansible.builtin.include_tasks: ../tasks/0.0.8/playbook.yaml
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.9/playbook.yaml
       vars:
-        migration_version: 0.0.8
+        migration_version: 0.0.9
         version_file: /opt/mosaic/mosaic-stack.version
