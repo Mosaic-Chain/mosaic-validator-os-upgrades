@@ -1,0 +1,134 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Get Nebula name
+  ansible.builtin.shell: |
+    set -o pipefail
+    nebula-cert print -json -path /etc/nebula/host.crt | jq -r '.details.name'
+  register: nebula_name_result
+  changed_when: false
+  failed_when: nebula_name_result.rc != 0
+  args:
+    executable: /bin/bash
+
+- name: Store validator name
+  ansible.builtin.set_fact:
+    validator_name: "{{ nebula_name_result.stdout }}"
+
+- name: Read TOTP secret
+  ansible.builtin.set_fact:
+    totp_secret: "{{ lookup('file', '/opt/mosaic/secrets/2fa.secret') }}"
+
+# Reset indexer db password
+- name: Generate a random password for indexer's user
+  ansible.builtin.set_fact:
+    indexer_db_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+
+- name: Copy indexer testnet systemd file
+  ansible.builtin.template:
+    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-indexer-testnet.service.j2"
+    dest: /etc/systemd/system/mosaic-indexer-testnet.service
+    mode: "0644"
+
+- name: Copy indexer devnet systemd file
+  ansible.builtin.template:
+    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-indexer-devnet.service.j2"
+    dest: /etc/systemd/system/mosaic-indexer-devnet.service
+    mode: "0644"
+
+- name: Check if indexer user exists
+  ansible.builtin.command: sudo -u postgres psql -tXAc "SELECT 1 FROM pg_roles WHERE rolname='indexer';"
+  register: indexer_user_exists
+  changed_when: false
+
+- name: Create indexer PSQL user
+  ansible.builtin.command: sudo -u postgres psql -c "CREATE USER indexer;"
+  register: result
+  changed_when: "'CREATE ROLE' in result.stdout"
+  when: "'1' not in indexer_user_exists.stdout"
+
+- name: Set indexer PSQL user password
+  ansible.builtin.command: sudo -u postgres psql -c "ALTER USER indexer WITH PASSWORD '{{ indexer_db_password }}';"
+  register: result
+  changed_when: "'ALTER USER' in result.stdout"
+
+# Reset admin backend db password
+- name: Generate a random password for admin backend's DB user
+  ansible.builtin.set_fact:
+    admin_backend_db_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+
+- name: Network Facts for testnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/network-specific-facts.yml
+  vars:
+    task_network: testnet
+
+- name: Copy admin backend testnet systemd file
+  ansible.builtin.template:
+    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-admin-backend-testnet.service.j2"
+    dest: /etc/systemd/system/mosaic-admin-backend-testnet.service
+    mode: "0644"
+  vars:
+    keystore_path: "{{ network_config.keystore_path }}"
+
+- name: Network Facts for devnet
+  ansible.builtin.include_tasks: /opt/mosaic/ansible/tasks/network-specific-facts.yml
+  vars:
+    task_network: devnet
+
+- name: Copy admin backend devnet systemd file
+  ansible.builtin.template:
+    src: "/opt/mosaic/ansible/artifacts/systemd/mosaic-admin-backend-devnet.service.j2"
+    dest: /etc/systemd/system/mosaic-admin-backend-devnet.service
+    mode: "0644"
+  vars:
+    keystore_path: "{{ network_config.keystore_path }}"
+
+- name: Check if admin backend user exists
+  ansible.builtin.command: sudo -u postgres psql -tXAc "SELECT 1 FROM pg_roles WHERE rolname='admin_backend';"
+  register: admin_backend_user_exists
+  changed_when: false
+
+- name: Create admin backend PSQL user
+  ansible.builtin.command: sudo -u postgres psql -c "CREATE USER admin_backend';"
+  register: result
+  changed_when: "'CREATE ROLE' in result.stdout"
+  when: "'1' not in admin_backend_user_exists.stdout"
+
+- name: Set admin backend PSQL user password
+  ansible.builtin.command: sudo -u postgres psql -c "ALTER USER admin_backend WITH PASSWORD '{{ admin_backend_db_password }}';"
+  register: result
+  changed_when: "'ALTER USER' in result.stdout"
+
+# Restart systemd services
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Enable and restart mosaic services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: restarted
+  loop:
+    - "mosaic-indexer-{{ network }}.service"
+    - "mosaic-admin-backend-{{ network }}.service"
+  register: service_result
+  until: service_result is succeeded
+  retries: 10
+  delay: 10
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
