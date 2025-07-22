@@ -1,0 +1,73 @@
+- name: Initial
+  hosts: localhost
+
+  tasks:
+    - name: Initial
+      ansible.builtin.include_tasks: ../tasks/0.0.1/playbook.yaml
+      vars:
+        migration_version: 0.0.1
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Migrate to Nebula
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to Nebula
+      ansible.builtin.include_tasks: ../tasks/0.0.2/playbook.yaml
+      vars:
+        migration_version: 0.0.2
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Make validator nodes update daily (not monthly)
+  hosts: localhost
+
+  tasks:
+    - name: Make validator nodes update daily
+      ansible.builtin.include_tasks: ../tasks/0.0.3/playbook.yaml
+      vars:
+        migration_version: 0.0.3
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Disable port scanning on local networks (excluding Nebula)
+  hosts: localhost
+
+  tasks:
+    - name: Disable port scanning on local networks (excluding Nebula)
+      ansible.builtin.include_tasks: ../tasks/0.0.4/playbook.yaml
+      vars:
+        migration_version: 0.0.4
+        version_file: /opt/mosaic/mosaic-stack.version
+
+# 0.0.5 is missing because it was deployed before the required packages were published.
+# Therefore, the 0.0.6 version equals to the previous 0.0.5 version, but with a new
+# version number to manually retrigger it for nodes that already on the 0.0.5 version.
+
+- name: Update indexer to latest version
+  hosts: localhost
+
+  tasks:
+    - name: Update indexer to latest version
+      ansible.builtin.include_tasks: ../tasks/0.0.6/playbook.yaml
+      vars:
+        migration_version: 0.0.6
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Remove pull based chainspec sync
+  hosts: localhost
+
+  tasks:
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.9/playbook.yaml
+      vars:
+        migration_version: 0.0.9
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Reset indexer and admin backend db passwords
+  hosts: localhost
+
+  tasks:
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.10/playbook.yaml
+      vars:
+        migration_version: 0.0.10
+        version_file: /opt/mosaic/mosaic-stack.version
