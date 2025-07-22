@@ -61,3 +61,13 @@
       vars:
         migration_version: 0.0.9
         version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Reset indexer and admin backend db passwords
+  hosts: localhost
+
+  tasks:
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.10/playbook.yaml
+      vars:
+        migration_version: 0.0.10
+        version_file: /opt/mosaic/mosaic-stack.version
