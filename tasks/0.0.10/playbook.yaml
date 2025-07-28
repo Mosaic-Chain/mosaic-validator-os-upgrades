@@ -2,6 +2,14 @@
   ansible.builtin.meta: end_play
   when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
 
+- name: Install latest Indexer
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - mosaic-pro-indexer
+      - mosaic-pro-indexer-rc
+    state: latest
+
 - name: Get Nebula name
   ansible.builtin.shell: |
     set -o pipefail
