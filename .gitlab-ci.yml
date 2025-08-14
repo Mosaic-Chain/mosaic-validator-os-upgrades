@@ -1,0 +1,31 @@
+stages:
+  - publish
+
+publish-github:
+  stage: publish
+  image: bitnami/git
+  only:
+    - develop
+    - main
+  variables:
+    GIT_STRATEGY: clone
+  before_script:
+    - eval $(ssh-agent -s)
+
+    - chmod 400 "$GITHUB_DEPLOY_KEY"
+    - ssh-add "$GITHUB_DEPLOY_KEY"
+
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+    - ssh-keyscan github.com >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+    - git config --global user.email "gitlab@mosaicchain.io"
+    - git config --global user.name "Mosaic Chain Gitlab Runner"
+    - git status
+  script:
+    - cp ./scripts/hide-git-committer-identity.sh ~/hide-git-committer-identity.sh
+    - git rebase -r --root --committer-date-is-author-date --exec "bash ~/hide-git-committer-identity.sh"
+    - git remote set-url origin $GITHUB_DEPLOY_URL
+    - git push --force origin HEAD:refs/heads/$CI_COMMIT_REF_NAME

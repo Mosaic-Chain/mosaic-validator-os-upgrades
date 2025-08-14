@@ -1,0 +1,29 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Allow port scanning on Nebula network
+  community.general.ufw:
+    rule: allow
+    port: "3330"
+    proto: any
+    direction: out
+    dest: "10.137.0.0/16"
+
+- name: Disable port scanning on local networks
+  community.general.ufw:
+    rule: reject
+    port: "3330"
+    proto: any
+    direction: out
+    dest: "{{ item }}"
+  loop:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
