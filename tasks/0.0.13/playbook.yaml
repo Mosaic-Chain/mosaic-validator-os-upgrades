@@ -1,0 +1,15 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Remove only-if-changed parameter from update-mosaic.sh script
+  ansible.builtin.copy:
+    src: files/update-mosaic.sh
+    dest: /opt/mosaic/update-mosaic.sh
+    mode: "0755"
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"

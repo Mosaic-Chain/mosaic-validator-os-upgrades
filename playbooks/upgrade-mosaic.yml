@@ -91,3 +91,76 @@
       vars:
         migration_version: 0.0.12
         version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Remove only-if-changed from update-mosaic.sh script
+  hosts: localhost
+
+  tasks:
+    - name: Remove only-if-changed from update-mosaic.sh script
+      ansible.builtin.include_tasks: ../tasks/0.0.13/playbook.yaml
+      vars:
+        migration_version: 0.0.13
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Update packages to latest
+  hosts: localhost
+
+  vars:
+    networks:
+      testnet:
+        - package: mosaic-announcer-rc
+          service: mosaic-announcer-testnet.service
+
+        - package: mosaic-admin-backend-rc
+          service: mosaic-admin-backend-testnet.service
+
+        - package: mosaic-testnet-solo
+          service: mosaic-chain-testnet.service
+
+        - package: mosaic-pro-indexer-rc
+          service: mosiac-indexer-testnet.service
+
+      devnet:
+        - package: mosaic-announcer
+          service: mosaic-announcer-devnet.service
+
+        - package: mosaic-admin-backend
+          service: mosaic-admin-backend-devnet.service
+
+        - package: mosaic-chain-devnet
+          service: mosaic-chain-devnet.service
+
+        - package: mosaic-pro-indexer
+          service: mosiac-indexer-devnet.service
+
+  tasks:
+    - name: Read file using shell
+      ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+      register: active_network_env
+      changed_when: false
+
+    - name: Set file content as fact
+      ansible.builtin.set_fact:
+        network: "{{ active_network_env.stdout | trim }}"
+
+    - name: Upgrade packages
+      ansible.builtin.apt:
+        name: "{{ item.package }}"
+        state: latest
+        update_cache: true
+      loop: "{{ networks[network] }}"
+      register: apt_results
+
+    - name: Restart services if a package is upgraded
+      ansible.builtin.systemd_service:
+        name: "{{ item.service }}"
+        state: restarted
+      loop: "{{ networks[network] }}"
+      when: >
+        apt_results.results | selectattr('item.package', 'equalto', item.package)
+                            | selectattr('changed', 'equalto', true)
+                            | list | length > 0
+      register: service_result
+      until: service_result is succeeded
+      retries: 10
+      delay: 10
