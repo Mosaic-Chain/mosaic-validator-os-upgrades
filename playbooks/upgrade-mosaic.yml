@@ -118,7 +118,7 @@
           service: mosaic-chain-testnet.service
 
         - package: mosaic-pro-indexer-rc
-          service: mosiac-indexer-testnet.service
+          service: mosaic-indexer-testnet.service
 
       devnet:
         - package: mosaic-announcer
@@ -131,7 +131,7 @@
           service: mosaic-chain-devnet.service
 
         - package: mosaic-pro-indexer
-          service: mosiac-indexer-devnet.service
+          service: mosaic-indexer-devnet.service
 
   tasks:
     - name: Read file using shell
