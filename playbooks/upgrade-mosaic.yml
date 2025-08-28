@@ -120,6 +120,9 @@
         - package: mosaic-pro-indexer-rc
           service: mosaic-indexer-testnet.service
 
+        - package: mosaic-nebula
+          service: mosaic-nebula-sync.service
+
       devnet:
         - package: mosaic-announcer
           service: mosaic-announcer-devnet.service
@@ -132,6 +135,9 @@
 
         - package: mosaic-pro-indexer
           service: mosaic-indexer-devnet.service
+
+        - package: mosaic-nebula
+          service: mosaic-nebula-sync.service
 
   tasks:
     - name: Read file using shell
