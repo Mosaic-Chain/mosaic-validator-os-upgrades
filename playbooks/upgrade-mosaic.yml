@@ -102,22 +102,32 @@
         migration_version: 0.0.13
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Migrate to new APT repository
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to new APT repository
+      ansible.builtin.include_tasks: ../tasks/0.0.14/playbook.yaml
+      vars:
+        migration_version: 0.0.14
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
   vars:
     networks:
       testnet:
-        - package: mosaic-announcer-rc
+        - package: mosaic-announcer
           service: mosaic-announcer-testnet.service
 
-        - package: mosaic-admin-backend-rc
+        - package: mosaic-admin-backend
           service: mosaic-admin-backend-testnet.service
 
         - package: mosaic-testnet-solo
           service: mosaic-chain-testnet.service
 
-        - package: mosaic-pro-indexer-rc
+        - package: mosaic-pro-indexer
           service: mosaic-indexer-testnet.service
 
         - package: mosaic-nebula
@@ -130,7 +140,7 @@
         - package: mosaic-admin-backend
           service: mosaic-admin-backend-devnet.service
 
-        - package: mosaic-chain-devnet
+        - package: mosaic-chain-node
           service: mosaic-chain-devnet.service
 
         - package: mosaic-pro-indexer
