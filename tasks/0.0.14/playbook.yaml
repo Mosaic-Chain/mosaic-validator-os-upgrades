@@ -1,0 +1,69 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Add new Mosaic Chain repository
+  ansible.builtin.copy:
+    content: "deb http://europe-apt.pkg.dev/projects/mosaicchain-general apt-{{ network }}-repository main\n"
+    dest: /etc/apt/sources.list.d/mosaic-chain.list
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Remove old repository files
+  ansible.builtin.file:
+    state: absent
+    path: "/etc/apt/sources.list.d/{{ item }}"
+  loop:
+    - mosaic-production.list
+    - mosaic-staging.list
+
+- name: Remove old packages
+  ansible.builtin.apt:
+    name:
+      - mosaic-admin-backend-rc
+      - mosaic-announcer-rc
+      - mosaic-pro-indexer-rc
+      - mosaic-chain-devnet
+    state: absent
+
+- name: Use new executables in service files
+  ansible.builtin.replace:
+    path: '/etc/systemd/system/{{ item["service_file"] }}'
+    regexp: '^ExecStart={{ item["old_executable"] }}(\\)?'
+    replace: 'ExecStart={{ item["new_executable"] }}\1'
+  loop:
+    - service_file: mosaic-indexer-testnet.service
+      old_executable: mosaic-pro-indexer-rc
+      new_executable: mosaic-pro-indexer
+
+    - service_file: mosaic-admin-backend-testnet.service
+      old_executable: mosaic-admin-backend-rc
+      new_executable: mosaic-admin-backend
+
+    - service_file: mosaic-announcer-testnet.service
+      old_executable: mosaic-announcer-rc
+      new_executable: mosaic-announcer
+
+    - service_file: mosaic-chain-devnet.service
+      old_executable: mosaic-chain-devnet
+      new_executable: mosaic-chain
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
