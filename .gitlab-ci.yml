@@ -3,7 +3,7 @@ stages:
 
 publish-github:
   stage: publish
-  image: bitnami/git
+  image: docker:git
   only:
     - develop
     - main
@@ -26,6 +26,6 @@ publish-github:
     - git status
   script:
     - cp ./scripts/hide-git-committer-identity.sh ~/hide-git-committer-identity.sh
-    - git rebase -r --root --committer-date-is-author-date --exec "bash ~/hide-git-committer-identity.sh"
+    - git rebase -r --root --committer-date-is-author-date --exec "sh ~/hide-git-committer-identity.sh"
     - git remote set-url origin $GITHUB_DEPLOY_URL
     - git push --force origin HEAD:refs/heads/$CI_COMMIT_REF_NAME
