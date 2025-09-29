@@ -19,3 +19,24 @@
     content: "{{ migration_version }}"
     mode: "0644"
   when: not version_file_stat.stat.exists
+
+# Some validators on devnet had issues where we already migrated to new APT repository structure,
+# but they wanted to apply every migration from 0.0.0 to 0.0.14.
+#
+# Thus, they didn't have packages ending with an `-rc` suffix.
+# This caused the update script to break at version 0.0.6.
+#
+# To mitigate this, now every new installation of the Validator OS initializes the migration version file.
+# But for those, that have already completed the setup-validator command AND have the latest APT repository structure,
+# we have to manually bump the version file to at least 0.0.14.
+- name: Check if new APT repository is enabled
+  ansible.builtin.stat:
+    path: "/etc/apt/sources.list.d/mosaic-chain.list"
+  register: apt_repository_stat
+
+- name: Skip upcoming version until 0.0.14 if new APT repository is already initialized
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "0.0.14"
+    mode: "0644"
+  when: (apt_repository_stat.stat.exists) and (lookup('ansible.builtin.file', version_file) is version("0.0.14", '<'))
