@@ -1,0 +1,8 @@
+[Unit]
+Description=Update Mosaic Stack every 24 hours
+
+[Timer]
+OnCalendar={{ oncalendar }}
+
+[Install]
+WantedBy=timers.target
