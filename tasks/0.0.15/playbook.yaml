@@ -1,0 +1,59 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Generate a random upgrade day
+  ansible.builtin.set_fact:
+    upgrade_hour: "{{ 24 | random }}"
+
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Ensure update-mosaic.service exists
+  ansible.builtin.template:
+    src: "update-mosaic.service.j2"
+    dest: /etc/systemd/system/update-mosaic.service
+    owner: root
+    mode: "0644"
+
+- name: Ensure update-mosaic.timer exists
+  ansible.builtin.template:
+    src: "update-mosaic.timer.j2"
+    dest: /etc/systemd/system/update-mosaic.timer
+    owner: root
+    mode: "0644"
+  vars:
+    oncalendar: "{{ '%02d:00:00' | format(upgrade_hour) }}"
+
+- name: Checkout network specific branch for update-mosaic
+  ansible.builtin.template:
+    src: "update-mosaic.sh.j2"
+    dest: "/opt/mosaic/update-mosaic.sh"
+    mode: "0755"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start update-mosaic.timer
+  ansible.builtin.systemd:
+    name: update-mosaic.timer
+    enabled: true
+    state: started
+
+- name: Remove CRON job for update script
+  ansible.builtin.cron:
+    name: "Update Mosaic script"
+    state: absent
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"

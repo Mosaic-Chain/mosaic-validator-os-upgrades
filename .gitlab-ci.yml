@@ -5,8 +5,9 @@ publish-github:
   stage: publish
   image: docker:git
   only:
-    - develop
-    - main
+    - testnet
+    - devnet
+    - mainnet
   variables:
     GIT_STRATEGY: clone
   before_script:
