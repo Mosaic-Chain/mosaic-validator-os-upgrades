@@ -1,0 +1,34 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Install latest indexer and debugger tool packages
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - mosaic-pro-indexer
+      - mosaic-pro-indexer-rc
+      - mosaic-debug
+    state: latest
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: mosaic-indexer-{{ network }}.service
+    enabled: true
+    state: started
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
