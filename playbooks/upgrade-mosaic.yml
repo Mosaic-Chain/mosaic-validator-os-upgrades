@@ -112,6 +112,16 @@
         migration_version: 0.0.14
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Switch from cron to systemd for scheduling auto updates
+  hosts: localhost
+
+  tasks:
+    - name: Switch from cron to systemd for scheduling auto updates
+      ansible.builtin.include_tasks: ../tasks/0.0.15/playbook.yaml
+      vars:
+        migration_version: 0.0.15
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
