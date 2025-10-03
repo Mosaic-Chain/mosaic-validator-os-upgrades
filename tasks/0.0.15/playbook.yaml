@@ -29,7 +29,7 @@
     owner: root
     mode: "0644"
   vars:
-    oncalendar: "{{ '%02d:00:00' | format(upgrade_hour) }}"
+    oncalendar: "{{ '%02d:00:00' | format(upgrade_hour | int) }}"
 
 - name: Checkout network specific branch for update-mosaic
   ansible.builtin.template:
