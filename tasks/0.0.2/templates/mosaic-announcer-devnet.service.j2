@@ -1,0 +1,16 @@
+[Unit]
+Description=Mosaic Announcer Devnet
+After=mosaic-chain.service
+
+[Service]
+ExecStart=mosaic-announcer \
+    --gateways http://10.137.0.2:8081,http://10.137.0.3:8081 \
+    --address {{ nebula_ip }} \
+    --name {{ validator_name }} \
+    --node-key-file /opt/mosaic/secrets/devnet.node.key
+Restart=always
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

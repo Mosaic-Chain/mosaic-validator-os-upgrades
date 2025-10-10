@@ -1,0 +1,192 @@
+- name: Initial
+  hosts: localhost
+
+  tasks:
+    - name: Initial
+      ansible.builtin.include_tasks: ../tasks/0.0.1/playbook.yaml
+      vars:
+        migration_version: 0.0.1
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Migrate to Nebula
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to Nebula
+      ansible.builtin.include_tasks: ../tasks/0.0.2/playbook.yaml
+      vars:
+        migration_version: 0.0.2
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Make validator nodes update daily (not monthly)
+  hosts: localhost
+
+  tasks:
+    - name: Make validator nodes update daily
+      ansible.builtin.include_tasks: ../tasks/0.0.3/playbook.yaml
+      vars:
+        migration_version: 0.0.3
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Disable port scanning on local networks (excluding Nebula)
+  hosts: localhost
+
+  tasks:
+    - name: Disable port scanning on local networks (excluding Nebula)
+      ansible.builtin.include_tasks: ../tasks/0.0.4/playbook.yaml
+      vars:
+        migration_version: 0.0.4
+        version_file: /opt/mosaic/mosaic-stack.version
+
+# 0.0.5 is missing because it was deployed before the required packages were published.
+# Therefore, the 0.0.6 version equals to the previous 0.0.5 version, but with a new
+# version number to manually retrigger it for nodes that already on the 0.0.5 version.
+
+- name: Update indexer to latest version
+  hosts: localhost
+
+  tasks:
+    - name: Update indexer to latest version
+      ansible.builtin.include_tasks: ../tasks/0.0.6/playbook.yaml
+      vars:
+        migration_version: 0.0.6
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Remove pull based chainspec sync
+  hosts: localhost
+
+  tasks:
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.9/playbook.yaml
+      vars:
+        migration_version: 0.0.9
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Reset indexer and admin backend db passwords
+  hosts: localhost
+
+  tasks:
+    - name: Remove pull based chainspec sync
+      ansible.builtin.include_tasks: ../tasks/0.0.10/playbook.yaml
+      vars:
+        migration_version: 0.0.10
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Install latest Indexer and Chain
+  hosts: localhost
+
+  tasks:
+    - name: Install latest Indexer and Chain
+      ansible.builtin.include_tasks: ../tasks/0.0.11/playbook.yaml
+      vars:
+        migration_version: 0.0.11
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Install latest Indexer and Chain
+  hosts: localhost
+
+  tasks:
+    - name: Install latest Indexer and Chain
+      ansible.builtin.include_tasks: ../tasks/0.0.12/playbook.yaml
+      vars:
+        migration_version: 0.0.12
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Remove only-if-changed from update-mosaic.sh script
+  hosts: localhost
+
+  tasks:
+    - name: Remove only-if-changed from update-mosaic.sh script
+      ansible.builtin.include_tasks: ../tasks/0.0.13/playbook.yaml
+      vars:
+        migration_version: 0.0.13
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Migrate to new APT repository
+  hosts: localhost
+
+  tasks:
+    - name: Migrate to new APT repository
+      ansible.builtin.include_tasks: ../tasks/0.0.14/playbook.yaml
+      vars:
+        migration_version: 0.0.14
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Switch from cron to systemd for scheduling auto updates
+  hosts: localhost
+
+  tasks:
+    - name: Switch from cron to systemd for scheduling auto updates
+      ansible.builtin.include_tasks: ../tasks/0.0.15/playbook.yaml
+      vars:
+        migration_version: 0.0.15
+        version_file: /opt/mosaic/mosaic-stack.version
+
+- name: Update packages to latest
+  hosts: localhost
+
+  vars:
+    networks:
+      testnet:
+        - package: mosaic-announcer
+          service: mosaic-announcer-testnet.service
+
+        - package: mosaic-admin-backend
+          service: mosaic-admin-backend-testnet.service
+
+        - package: mosaic-testnet-solo
+          service: mosaic-chain-testnet.service
+
+        - package: mosaic-pro-indexer
+          service: mosaic-indexer-testnet.service
+
+        - package: mosaic-nebula
+          service: mosaic-nebula-sync.service
+
+      devnet:
+        - package: mosaic-announcer
+          service: mosaic-announcer-devnet.service
+
+        - package: mosaic-admin-backend
+          service: mosaic-admin-backend-devnet.service
+
+        - package: mosaic-chain-node
+          service: mosaic-chain-devnet.service
+
+        - package: mosaic-pro-indexer
+          service: mosaic-indexer-devnet.service
+
+        - package: mosaic-nebula
+          service: mosaic-nebula-sync.service
+
+  tasks:
+    - name: Read file using shell
+      ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+      register: active_network_env
+      changed_when: false
+
+    - name: Set file content as fact
+      ansible.builtin.set_fact:
+        network: "{{ active_network_env.stdout | trim }}"
+
+    - name: Upgrade packages
+      ansible.builtin.apt:
+        name: "{{ item.package }}"
+        state: latest
+        update_cache: true
+      loop: "{{ networks[network] }}"
+      register: apt_results
+
+    - name: Restart services if a package is upgraded
+      ansible.builtin.systemd_service:
+        name: "{{ item.service }}"
+        state: restarted
+      loop: "{{ networks[network] }}"
+      when: >
+        apt_results.results | selectattr('item.package', 'equalto', item.package)
+                            | selectattr('changed', 'equalto', true)
+                            | list | length > 0
+      register: service_result
+      until: service_result is succeeded
+      retries: 10
+      delay: 10
