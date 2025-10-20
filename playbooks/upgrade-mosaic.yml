@@ -159,6 +159,22 @@
         - package: mosaic-nebula
           service: mosaic-nebula-sync.service
 
+      mainnet:
+        - package: mosaic-announcer
+          service: mosaic-announcer-mainnet.service
+
+        - package: mosaic-admin-backend
+          service: mosaic-admin-backend-mainnet.service
+
+        - package: mosaic-chain-node
+          service: mosaic-chain-mainnet.service
+
+        - package: mosaic-pro-indexer
+          service: mosaic-indexer-mainnet.service
+
+        - package: mosaic-nebula
+          service: mosaic-nebula-sync.service
+
   tasks:
     - name: Read file using shell
       ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
