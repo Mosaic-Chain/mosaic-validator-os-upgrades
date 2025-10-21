@@ -127,9 +127,9 @@
 
   tasks:
     - name: Explicitly specify 10.137.0.0/16 subnet for private IPs
-      ansible.builtin.include_tasks: ../tasks/0.0.16/playbook.yaml
+      ansible.builtin.include_tasks: ../tasks/1.0.1/playbook.yaml
       vars:
-        migration_version: 0.0.16
+        migration_version: 1.0.1
         version_file: /opt/mosaic/mosaic-stack.version
 
 - name: Update packages to latest
