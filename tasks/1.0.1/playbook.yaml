@@ -2,15 +2,20 @@
   ansible.builtin.meta: end_play
   when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
 
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
 - name: Specify subnet for allow private IP flag
   ansible.builtin.replace:
-    path: "/etc/systemd/system/mosaic-chain-{{ item }}.service"
+    path: "/etc/systemd/system/mosaic-chain-{{ network }}.service"
     regexp: '^(\s*)--allow-private-ip \\'
     replace: '\1--network-backend libp2p \\\n\1--max-pending-outgoing 20 \\\n\1--allow-private-ip 10.137.0.0/16 \\'
-  loop:
-    - testnet
-    - devnet
-    - mainnet
 
 - name: Reload systemd daemon
   ansible.builtin.systemd_service:
