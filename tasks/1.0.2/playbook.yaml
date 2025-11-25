@@ -1,0 +1,23 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Update APT cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Remove OpenNTPD package
+  ansible.builtin.apt:
+    name: openntpd
+    state: absent
+
+- name: Install Chrony package
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
