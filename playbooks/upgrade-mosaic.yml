@@ -142,6 +142,16 @@
         migration_version: 1.0.2
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Expose Relay Chain RPC
+  hosts: localhost
+
+  tasks:
+    - name: Expose Relay Chain RPC
+      ansible.builtin.include_tasks: ../tasks/1.0.3/playbook.yaml
+      vars:
+        migration_version: 1.0.3
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
