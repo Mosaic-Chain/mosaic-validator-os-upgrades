@@ -1,0 +1,49 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+- name: Read file using shell
+  ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+  register: active_network_env
+  changed_when: false
+
+- name: Set file content as fact
+  ansible.builtin.set_fact:
+    network: "{{ active_network_env.stdout | trim }}"
+
+- name: Enable RPC URL for Relay chain
+  ansible.builtin.lineinfile:
+    path: "{{ item }}"
+    insertafter: '^-- \\$'
+    line: '    --experimental-rpc-endpoint "listen-addr=0.0.0.0:9954,methods=safe" \'
+    state: present
+  loop:
+    - /etc/systemd/system/mosaic-chain-devnet.service
+    - /etc/systemd/system/mosaic-chain-mainnet.service
+
+- name: Deploy custom Nginx configuration
+  ansible.builtin.copy:
+    src: files/mosaic-nginx.conf
+    dest: /etc/nginx/sites-available/nginx-mosaic
+    mode: "0644"
+
+- name: Systemd Daemon Reload
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart chain service
+  ansible.builtin.systemd_service:
+    name: "mosaic-chain-{{ network }}.service"
+    enabled: true
+    state: restarted
+
+- name: Restart Nginx service
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: restarted
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
