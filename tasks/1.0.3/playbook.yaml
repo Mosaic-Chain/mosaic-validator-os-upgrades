@@ -14,7 +14,7 @@
 - name: Enable RPC URL for Relay chain
   ansible.builtin.lineinfile:
     path: "/etc/systemd/system/mosaic-chain-{{ network }}.service"
-    insertafter: '^(\s*)-- \\'
+    insertafter: '^(\s*)-- \\$'
     line: '    --experimental-rpc-endpoint "listen-addr=0.0.0.0:9954,methods=safe" \'
     state: present
   when: network in ["devnet", "mainnet"]
