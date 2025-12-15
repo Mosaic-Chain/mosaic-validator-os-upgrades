@@ -163,6 +163,9 @@
         - package: mosaic-nebula
           service: mosaic-nebula-sync.service
 
+        - package: nebula
+          service: nebula.service
+
       devnet:
         - package: mosaic-announcer
           service: mosaic-announcer-devnet.service
@@ -179,6 +182,9 @@
         - package: mosaic-nebula
           service: mosaic-nebula-sync.service
 
+        - package: nebula
+          service: nebula.service
+
       mainnet:
         - package: mosaic-announcer
           service: mosaic-announcer-mainnet.service
@@ -194,6 +200,9 @@
 
         - package: mosaic-nebula
           service: mosaic-nebula-sync.service
+
+        - package: nebula
+          service: nebula.service
 
   tasks:
     - name: Read file using shell
