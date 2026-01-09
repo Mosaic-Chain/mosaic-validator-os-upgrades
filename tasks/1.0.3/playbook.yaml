@@ -19,6 +19,13 @@
     state: present
   when: network in ["devnet", "mainnet"]
 
+- name: Remove old rpc-port flag
+  ansible.builtin.lineinfile:
+    path: "/etc/systemd/system/mosaic-chain-{{ network }}.service"
+    regexp: '^(\s*)--rpc-port 8844 \\$'
+    state: absent
+  when: network in ["devnet", "mainnet"]
+
 - name: Deploy custom Nginx configuration
   ansible.builtin.copy:
     src: files/mosaic-nginx.conf
