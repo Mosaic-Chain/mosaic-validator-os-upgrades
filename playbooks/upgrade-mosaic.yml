@@ -224,11 +224,18 @@
       ansible.builtin.set_fact:
         network: "{{ active_network_env.stdout | trim }}"
 
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+      register: apt_result
+      retries: 5
+      delay: 10
+      until: apt_result is succeeded
+
     - name: Upgrade packages
       ansible.builtin.apt:
         name: "{{ item.package }}"
         state: latest
-        update_cache: true
       loop: "{{ networks[network] }}"
       register: apt_results
 
