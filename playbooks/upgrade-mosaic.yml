@@ -152,6 +152,16 @@
         migration_version: 1.0.3
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Migrate devnet to new Paseo relay chain
+  hosts: localhost
+
+  tasks:
+    - name: Migrate devnet to new Paseo relay chain
+      ansible.builtin.include_tasks: ../tasks/1.0.4/playbook.yaml
+      vars:
+        migration_version: 1.0.4
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
