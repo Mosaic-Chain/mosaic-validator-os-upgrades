@@ -29,7 +29,7 @@
 
 - name: Delete old embedded relay chain database
   ansible.builtin.file:
-    path: /var/lib/mosaic-devnet/polkadot
+    path: /var/lib/mosaic-devnet/chains/paseo
     state: absent
 
 - name: Reload systemd daemon
