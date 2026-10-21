@@ -1,0 +1,216 @@
+- name: Indexer rollout control
+  hosts: localhost
+
+  vars_files:
+    - ../rollout/indexer.yml
+
+  tasks:
+    - name: Read the active network
+      ansible.builtin.command: cat /opt/mosaic/artifacts/active-network.env
+      register: indexer_rollout_network_env
+      changed_when: false
+
+    - name: Set the active network
+      ansible.builtin.set_fact:
+        network: "{{ indexer_rollout_network_env.stdout | trim }}"
+
+    - name: Skip indexer rollout outside mainnet
+      ansible.builtin.meta: end_play
+      when:
+        - network != "mainnet"
+        - indexer_rollout.mode != "cleanup"
+
+    - name: Remove the temporary indexer apt pin
+      ansible.builtin.file:
+        path: /etc/apt/preferences.d/90-mosaic-indexer-rollout.pref
+        state: absent
+      when: indexer_rollout.mode == "cleanup"
+
+    - name: Remove the indexer rollout state file
+      ansible.builtin.file:
+        path: /opt/mosaic/indexer-rollout.state
+        state: absent
+      when: indexer_rollout.mode == "cleanup"
+
+    - name: Stop when the rollout is being cleaned up
+      ansible.builtin.meta: end_play
+      when: indexer_rollout.mode == "cleanup"
+
+    - name: Validate the indexer rollout configuration
+      ansible.builtin.assert:
+        that:
+          - indexer_rollout.mode in ['rollout', 'paused']
+          - (indexer_rollout.bucket_count | int) > 0
+          - (indexer_rollout.max_bucket | int) >= 0
+          - (indexer_rollout.max_bucket | int) <= (indexer_rollout.bucket_count | int)
+        fail_msg: "Invalid indexer rollout configuration in rollout/indexer.yml."
+        quiet: true
+
+    - name: Read the mainnet node key
+      ansible.builtin.slurp:
+        src: "/opt/mosaic/secrets/{{ network }}.node.key"
+      register: indexer_rollout_node_key
+      failed_when: false
+      no_log: true
+
+    - name: Derive the libp2p peer ID
+      ansible.builtin.command:
+        argv:
+          - mosaic-chain
+          - key
+          - inspect-node-key
+        stdin: "{{ indexer_rollout_node_key.content | default('') | b64decode | trim }}"
+        stdin_add_newline: false
+      register: indexer_rollout_peer_id
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    - name: Read the installed indexer version
+      ansible.builtin.command:
+        argv:
+          - dpkg-query
+          - -W
+          - -f
+          - "${Version}"
+          - mosaic-pro-indexer
+      register: indexer_rollout_installed_version
+      changed_when: false
+      failed_when: false
+
+    - name: Refresh the apt cache for the rollout check
+      ansible.builtin.apt:
+        update_cache: true
+      register: indexer_rollout_apt_update
+      retries: 5
+      delay: 10
+      until: indexer_rollout_apt_update is succeeded
+
+    - name: Check the indexer versions offered by apt
+      ansible.builtin.command:
+        argv:
+          - apt-cache
+          - madison
+          - mosaic-pro-indexer
+      register: indexer_rollout_madison
+      changed_when: false
+      failed_when: false
+
+    - name: Use the last bucket when the peer ID is unavailable
+      ansible.builtin.set_fact:
+        indexer_rollout_bucket: "{{ indexer_rollout.bucket_count | int }}"
+      when: (indexer_rollout_peer_id.rc | default(1)) != 0 or (indexer_rollout_peer_id.stdout | default('') | trim) == ''
+
+    - name: Compute the rollout bucket
+      ansible.builtin.set_fact:
+        indexer_rollout_bucket: "{{ ((indexer_rollout_peer_id.stdout | trim | hash('sha256'))[:8] | int(base=16)) % (indexer_rollout.bucket_count | int) }}"
+      when:
+        - (indexer_rollout_peer_id.rc | default(1)) == 0
+        - (indexer_rollout_peer_id.stdout | default('') | trim) != ''
+
+    - name: Read the resolved indexer versions
+      ansible.builtin.set_fact:
+        indexer_rollout_installed_version_value: "{{ indexer_rollout_installed_version.stdout | default('') | trim }}"
+        indexer_rollout_target_version: "{{ indexer_rollout.target_version | default('') | string | trim }}"
+        indexer_rollout_fallback_version: "{{ indexer_rollout.fallback_version | default('') | string | trim }}"
+
+    - name: Check whether this node is an explicit canary
+      ansible.builtin.set_fact:
+        indexer_rollout_is_canary: >-
+          {{ (indexer_rollout_peer_id.rc | default(1)) == 0
+             and ((indexer_rollout_peer_id.stdout | default('') | trim | hash('sha256'))
+                  in (indexer_rollout.canary_peer_hashes | default([]))) }}
+
+    - name: Check whether the target indexer version is available
+      ansible.builtin.set_fact:
+        indexer_rollout_target_available: >-
+          {{ (indexer_rollout_target_version != '')
+             and ((' | ' ~ indexer_rollout_target_version ~ ' |') in (indexer_rollout_madison.stdout | default(''))) }}
+
+    - name: Decide whether this node may receive the indexer
+      ansible.builtin.set_fact:
+        indexer_rollout_allowed: >-
+          {{ indexer_rollout.mode == 'rollout'
+             and ((indexer_rollout_is_canary | bool)
+                  or (indexer_rollout_bucket | int) < (indexer_rollout.max_bucket | int))
+             and (indexer_rollout_target_available | bool) }}
+
+    - name: Select the indexer version to pin
+      ansible.builtin.set_fact:
+        indexer_rollout_pin_version: >-
+          {{ indexer_rollout_target_version
+             if (indexer_rollout_allowed | bool)
+             else (indexer_rollout_installed_version_value
+                   if indexer_rollout_installed_version_value != ''
+                   else indexer_rollout_fallback_version) }}
+
+    - name: Fail when no indexer version can be pinned
+      ansible.builtin.fail:
+        msg: >-
+          Could not determine an indexer version to pin (installed version is empty and
+          fallback_version is not set); refusing to let the package update play run.
+      when: indexer_rollout_pin_version == ''
+
+    - name: Warn when the peer ID is unavailable
+      ansible.builtin.debug:
+        msg: "Could not derive the peer ID; holding this node at {{ indexer_rollout_pin_version }}."
+      when:
+        - (indexer_rollout_peer_id.rc | default(1)) != 0 or (indexer_rollout_peer_id.stdout | default('') | trim) == ''
+
+    - name: Warn when the target indexer version is not available
+      ansible.builtin.debug:
+        msg: >-
+          Indexer target version {{ indexer_rollout_target_version }} is not offered by apt;
+          holding this node at {{ indexer_rollout_pin_version }}.
+      when:
+        - indexer_rollout.mode == "rollout"
+        - (indexer_rollout.max_bucket | int) > 0 or (indexer_rollout_is_canary | bool)
+        - not (indexer_rollout_target_available | bool)
+
+    - name: Fail when the pinned indexer version is not offered by apt
+      ansible.builtin.fail:
+        msg: >-
+          Pinned indexer version {{ indexer_rollout_pin_version }} is not offered by apt;
+          refusing to let the package update play run.
+      when:
+        - indexer_rollout_pin_version != ''
+        - not ((' | ' ~ indexer_rollout_pin_version ~ ' |') in (indexer_rollout_madison.stdout | default('')))
+
+    - name: Write the temporary indexer apt pin
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/90-mosaic-indexer-rollout.pref
+        content: |
+          Package: mosaic-pro-indexer
+          Pin: version {{ indexer_rollout_pin_version }}
+          Pin-Priority: 990
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Record the indexer rollout state
+      ansible.builtin.copy:
+        dest: /opt/mosaic/indexer-rollout.state
+        content: |
+          bucket={{ indexer_rollout_bucket }}
+          limit={{ indexer_rollout.max_bucket }}
+          mode={{ indexer_rollout.mode }}
+          canary={{ indexer_rollout_is_canary }}
+          allowed={{ indexer_rollout_allowed }}
+          pin={{ indexer_rollout_pin_version }}
+          installed={{ indexer_rollout_installed_version_value }}
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Log the indexer rollout decision
+      ansible.builtin.debug:
+        msg: >-
+          indexer rollout: network={{ network }}
+          peer={{ (indexer_rollout_peer_id.stdout | default('') | trim | hash('sha256'))[:12] }}
+          bucket={{ indexer_rollout_bucket }}
+          limit={{ indexer_rollout.max_bucket }}
+          mode={{ indexer_rollout.mode }}
+          canary={{ indexer_rollout_is_canary }}
+          allowed={{ indexer_rollout_allowed }}
+          pin={{ indexer_rollout_pin_version }}
+          installed={{ indexer_rollout_installed_version_value }}

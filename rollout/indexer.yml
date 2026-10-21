@@ -1,0 +1,10 @@
+indexer_rollout:
+  mode: rollout
+  target_version: "1.1.16.4988+e54d9028"
+  max_bucket: 0
+  bucket_count: 1000
+  fallback_version: ""
+  canary_peer_hashes:
+    - "541578204be804e791a92aa64e6ac3d03e8ffc993df35e7463f449e18a32bcfe"
+    - "45885d11b4cc1fde40bc07fe53225ba2dd5de33a69ec89cd48645b17d8e33108"
+    - "23fba3768d4cdb048dbc480d637082925f62d1929a449ba3ecf512074a65161a"
