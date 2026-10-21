@@ -182,6 +182,8 @@
         migration_version: 1.0.7
         version_file: /opt/mosaic/mosaic-stack.version
 
+- import_playbook: indexer-rollout.yml
+
 - name: Update packages to latest
   hosts: localhost
 
