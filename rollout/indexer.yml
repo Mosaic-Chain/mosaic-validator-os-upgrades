@@ -1,7 +1,7 @@
 indexer_rollout:
   mode: rollout
   target_version: "1.1.16.4988+e54d9028"
-  max_bucket: 200
+  max_bucket: 400
   bucket_count: 1000
   fallback_version: ""
   canary_peer_hashes:
