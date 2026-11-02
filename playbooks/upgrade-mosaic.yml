@@ -162,6 +162,16 @@
         migration_version: 1.0.4
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Disable port scanning on local IPv6 networks
+  hosts: localhost
+
+  tasks:
+    - name: Disable port scanning on local IPv6 networks
+      ansible.builtin.include_tasks: ../tasks/1.0.6/playbook.yaml
+      vars:
+        migration_version: 1.0.6
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
