@@ -1,0 +1,49 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+# Only root may read what is in /opt/mosaic/secrets. The installer's
+# setup-validator.sh writes 2fa.secret (the admin backend's second factor) and
+# totp.secret (the VPN's) with `sudo tee`, under the default umask, and the
+# admin backend writes its JWT signing key with the same umask, so all three
+# are world-readable; the setup CLI created the directory itself with 0755.
+# Every service that reads these files runs as root, so nothing has to be
+# restarted. The other keys are already 0600; setting them again changes
+# nothing.
+- name: Find the secrets directory
+  ansible.builtin.stat:
+    path: /opt/mosaic/secrets
+  register: secrets_dir
+
+- name: Make the secrets directory root-only
+  ansible.builtin.file:
+    path: /opt/mosaic/secrets
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: secrets_dir.stat.exists
+
+- name: Find the secrets
+  ansible.builtin.find:
+    paths: /opt/mosaic/secrets
+    file_type: file
+    hidden: true
+  register: secrets
+  when: secrets_dir.stat.exists
+
+- name: Make the secrets root-only
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ secrets.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
