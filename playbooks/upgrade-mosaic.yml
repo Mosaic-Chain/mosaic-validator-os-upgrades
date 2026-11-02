@@ -172,6 +172,16 @@
         migration_version: 1.0.6
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Make the secrets readable by root only
+  hosts: localhost
+
+  tasks:
+    - name: Make the secrets readable by root only
+      ansible.builtin.include_tasks: ../tasks/1.0.7/playbook.yaml
+      vars:
+        migration_version: 1.0.7
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
