@@ -1,0 +1,63 @@
+- name: Skip if migration already completed
+  ansible.builtin.meta: end_play
+  when: lookup('ansible.builtin.file', version_file) is version(migration_version, '>=')
+
+# The outbound rules of the setup CLI's configure-security.yml, for IPv6 as
+# well. They stop the chain from dialing its p2p ports on the provider's local
+# network, which the provider reports as a port scan; until now they covered
+# IPv4 only, and the chain could still dial those ports on unique local IPv6
+# addresses (fc00::/7, the IPv6 counterpart of 10/8, 172.16/12, 192.168/16).
+# Nebula is IPv4 only, so its exception has no IPv6 counterpart. ufw skips a
+# rule it already has: on a node the setup CLI set up, only the fc00::/7 rules
+# are new; on one set up before the relay chain port had its rules, the 4440
+# ones are too.
+#
+# With IPV6=no in /etc/default/ufw, ufw drops all IPv6 traffic and refuses
+# IPv6 rules ("IPv6 support not enabled"), which would fail this task and keep
+# every later one from running. Such a node needs no IPv6 rule, so it gets none.
+- name: Networks the p2p ports must not be dialed on
+  ansible.builtin.set_fact:
+    local_networks: >-
+      {{ ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
+         + (['fc00::/7'] if lookup('ansible.builtin.file', '/etc/default/ufw')
+                            is search('^IPV6=yes$', multiline=True) else []) }}
+
+- name: Allow port scanning on Nebula network for parachain
+  community.general.ufw:
+    rule: allow
+    port: "3330"
+    proto: any
+    direction: out
+    dest: 10.137.0.0/16
+
+- name: Disable port scanning on local networks for parachain
+  community.general.ufw:
+    rule: reject
+    port: "3330"
+    proto: any
+    direction: out
+    dest: "{{ item }}"
+  loop: "{{ local_networks }}"
+
+- name: Allow port scanning on Nebula network for relay chain
+  community.general.ufw:
+    rule: allow
+    port: "4440"
+    proto: any
+    direction: out
+    dest: 10.137.0.0/16
+
+- name: Disable port scanning on local networks for relay chain
+  community.general.ufw:
+    rule: reject
+    port: "4440"
+    proto: any
+    direction: out
+    dest: "{{ item }}"
+  loop: "{{ local_networks }}"
+
+- name: Set version counter to {{ migration_version }}
+  ansible.builtin.copy:
+    dest: "{{ version_file }}"
+    content: "{{ migration_version }}"
+    mode: "0644"
