@@ -1,5 +1,5 @@
 indexer_rollout:
-  mode: rollout
+  mode: cleanup
   target_version: "1.1.16.4988+e54d9028"
   max_bucket: 1000
   bucket_count: 1000
