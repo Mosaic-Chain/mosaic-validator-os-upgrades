@@ -182,6 +182,16 @@
         migration_version: 1.0.7
         version_file: /opt/mosaic/mosaic-stack.version
 
+- name: Install mosaic-backup
+  hosts: localhost
+
+  tasks:
+    - name: Install mosaic-backup
+      ansible.builtin.include_tasks: ../tasks/1.0.8/playbook.yaml
+      vars:
+        migration_version: 1.0.8
+        version_file: /opt/mosaic/mosaic-stack.version
+
 - name: Update packages to latest
   hosts: localhost
 
